@@ -5,18 +5,22 @@ end
 module Paperclip
 	module Storage
 		module Dropboxstorage
+			extend self
+
 			def self.extended(base)
 				require "dropbox"
 				base.instance_eval do
-					
+
 					if File.exists?("#{Rails.root}/config/paperclipdropbox.yml")
 						@options.merge!(YAML.load_file("#{Rails.root}/config/paperclipdropbox.yml")[Rails.env].symbolize_keys)
 					end
-					
+
 					@dropbox_user = @options[:dropbox_user]
 					@dropbox_password = @options[:dropbox_password]
-					@dropbox_key = '8ti7qntpcysl91j'
-					@dropbox_secret = 'i0tshr4cpd1pa4e'
+					@dropbox_key = options[:dropbox_key]
+					raise "Missing dropbox_key" unless @dropbox_key
+					@dropbox_secret = options[:dropbox_secret]
+					raise "Missing dropbox_secret" unless @dropbox_secret
 					@dropbox_public_url = @options[:dropbox_public_url] || "http://dl.dropbox.com/u/"
 					@options.merge!( :url => "#{@dropbox_public_url}#{user_id}#{@options[:path]}" )
 					@url = @options[:url]
@@ -74,19 +78,20 @@ module Paperclip
 				end
 			end
 
-			private
 			def dropbox_session
 				unless Rails.cache.exist?('DropboxSession')
 					if @dropboxsession.blank?
-						log("loading session from yaml");
+						log("loading session from yaml") if respond_to?(:log)
 						if File.exists?("#{Rails.root}/config/dropboxsession.yml")
 							@dropboxsession = Dropbox::Session.deserialize(File.read("#{Rails.root}/config/dropboxsession.yml"))
+              @dropboxsession.mode = :dropbox
 						end
+          else
+            @dropboxsession.mode = :dropbox
 					end
-					@dropboxsession.mode = :dropbox
 					@dropboxsession
 				else
-					log("reading Dropbox Session")
+					log("reading Dropbox Session") if respond_to?(:log)
 					Rails.cache.read('DropboxSession')
 				end
 			end
